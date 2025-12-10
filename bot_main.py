@@ -2,11 +2,14 @@
 import os
 import logging
 import asyncio
-import io
+from aiogram import Router, F
+from aiogram.types import Message, SuccessfulPayment
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 from dotenv import load_dotenv
 from chainalysis_client import chainalysis_check
+
+router = Router()
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
@@ -78,13 +81,15 @@ async def buy_deep(callback: types.CallbackQuery):
 async def pre_checkout(query: types.PreCheckoutQuery):
     await query.answer(ok=True)
 
-@dp.message(types.MessageSuccessfulPayment)
-async def got_payment(message: types.Message):
+@router.message(F.successful_payment)
+async def got_payment(message: Message):
     payload = message.successful_payment.invoice_payload
+    
     if payload.startswith("deep_check:"):
         address = payload.split(":", 1)[1]
         await message.answer("Платёж получен — запускаю глубокую проверку...")
-        deep_res = chainalysis_check(address)  # на практике: отдельный платный эндпойнт
+
+        deep_res = chainalysis_check(address)
         await message.answer(f"Результат глубокого отчёта:\n`{deep_res}`")
     else:
         await message.answer("Платёж получен.")
